@@ -1,0 +1,31 @@
+name: Fintraffic live data
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download data from Fintraffic
+        run: |
+          mkdir out
+          curl -sSf --retry 3 -A "parking-place-app" https://parking.fintraffic.fi/api/v1/facilities.geojson -o out/facilities.geojson
+          curl -sSf --retry 3 -A "parking-place-app" https://parking.fintraffic.fi/api/v1/utilizations -o out/utilizations.json
+          date -u +%Y-%m-%dT%H:%M:%SZ > out/updated.txt
+          echo "Data: Fintraffic, CC BY 4.0" > out/README.txt
+          ls -la out
+      - name: Publish to the data branch
+        run: |
+          cd out
+          git init -q -b data
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -qm "Fintraffic data"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
